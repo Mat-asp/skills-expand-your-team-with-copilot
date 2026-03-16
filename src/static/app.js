@@ -402,6 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Apply search and filter, and handle weekend filter in client
       displayFilteredActivities();
+      highlightActivityFromUrl();
     } catch (error) {
       activitiesList.innerHTML =
         "<p>Failed to load activities. Please try again later.</p>";
@@ -469,6 +470,31 @@ document.addEventListener("DOMContentLoaded", () => {
     // Display filtered activities
     Object.entries(filteredActivities).forEach(([name, details]) => {
       renderActivityCard(name, details);
+    });
+  }
+
+  // Generate a shareable URL for a specific activity
+  function getShareUrl(name) {
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.searchParams.set("activity", name);
+    return url.toString();
+  }
+
+  // Highlight an activity card linked to via a shared URL
+  function highlightActivityFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const activityName = params.get("activity");
+    if (!activityName) return;
+
+    const cards = activitiesList.querySelectorAll(".activity-card");
+    cards.forEach((card) => {
+      const title = card.querySelector("h4");
+      if (title && title.textContent.trim() === activityName) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.add("highlighted");
+        setTimeout(() => card.classList.remove("highlighted"), 3000);
+      }
     });
   }
 
@@ -569,6 +595,13 @@ document.addEventListener("DOMContentLoaded", () => {
         `
         }
       </div>
+      <div class="share-buttons">
+        <span class="share-label">Share:</span>
+        <button class="share-btn share-btn-twitter" data-activity="${name}" aria-label="Share on X (Twitter)" title="Share on X (Twitter)">𝕏</button>
+        <button class="share-btn share-btn-facebook" data-activity="${name}" aria-label="Share on Facebook" title="Share on Facebook">f</button>
+        <button class="share-btn share-btn-whatsapp" data-activity="${name}" aria-label="Share on WhatsApp" title="Share on WhatsApp">W</button>
+        <button class="share-btn share-btn-copy" data-activity="${name}" aria-label="Copy link" title="Copy link">🔗</button>
+      </div>
     `;
 
     // Add click handlers for delete buttons
@@ -586,6 +619,51 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
+
+    // Add click handlers for share buttons
+    activityCard.querySelectorAll(".share-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const activityName = btn.dataset.activity;
+        const shareUrl = getShareUrl(activityName);
+        const shareText = `Check out ${activityName} at Mergington High School!`;
+
+        if (btn.classList.contains("share-btn-twitter")) {
+          window.open(
+            `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+            "_blank",
+            "noopener,noreferrer"
+          );
+        } else if (btn.classList.contains("share-btn-facebook")) {
+          window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+            "_blank",
+            "noopener,noreferrer"
+          );
+        } else if (btn.classList.contains("share-btn-whatsapp")) {
+          window.open(
+            `https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`,
+            "_blank",
+            "noopener,noreferrer"
+          );
+        } else if (btn.classList.contains("share-btn-copy")) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            const originalText = btn.textContent;
+            btn.textContent = "✓";
+            btn.style.backgroundColor = "var(--success)";
+            btn.style.color = "white";
+            btn.style.borderColor = "var(--success)";
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.style.backgroundColor = "";
+              btn.style.color = "";
+              btn.style.borderColor = "";
+            }, 2000);
+          }).catch(() => {
+            btn.title = "Could not copy — please copy the URL from your browser's address bar.";
+          });
+        }
+      });
+    });
 
     activitiesList.appendChild(activityCard);
   }
